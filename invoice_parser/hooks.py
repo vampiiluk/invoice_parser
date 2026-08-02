@@ -138,13 +138,12 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
-# }
+doc_events = {
+	"Invoice Template": {
+		"on_update": "invoice_parser.utils.invoice_parser.sync_template_file",
+		"on_trash": "invoice_parser.utils.invoice_parser.delete_template_file"
+	}
+}
 
 # Scheduled Tasks
 # ---------------
@@ -256,3 +255,8 @@ app_license = "mit"
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+
+
+fixtures = [
+    {"dt": "Client Script", "filters": [["module", "=", "Invoice Parser"]]}
+]

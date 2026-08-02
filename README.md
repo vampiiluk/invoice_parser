@@ -1,33 +1,29 @@
-### Invoice Parser
+# Invoice Parser
 
-Invoice Parser
+An intelligent invoice extraction module for Frappe using local deep learning OCR (Doctr/PaddleOCR) with Gemini AI fallback.
 
-### Installation
+## Installation
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
+When installing on another Frappe instance, simply run:
 
 ```bash
-cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch master
+bench get-app https://github.com/yourusername/invoice_parser
 bench install-app invoice_parser
 ```
 
-### Contributing
+### Docker Development Note
 
-This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
+If you are using `frappe_docker` and encounter `ModuleNotFoundError: No module named 'invoice_parser'` in background queues after installation, it means the python environment inside your background worker containers didn't sync the editable package properly.
 
+Run this inside your backend/queue containers to fix the python path:
 ```bash
-cd apps/invoice_parser
-pre-commit install
+env/bin/pip install -e apps/invoice_parser
+# or just symlink it
+ln -s /home/frappe/frappe-bench/apps/invoice_parser/invoice_parser /home/frappe/frappe-bench/env/lib/python3.14/site-packages/invoice_parser
 ```
 
-Pre-commit is configured to use the following tools for checking and formatting your code:
-
-- ruff
-- eslint
-- prettier
-- pyupgrade
-
-### License
-
-mit
+## Features
+- Background extraction via Python (`invoice2data`)
+- Fuzzy match items and parties against ERPNext masters
+- Gemini AI fallback
+- Realtime progress updates in the UI

@@ -1,0 +1,177 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 1,
+ "allow_rename": 1,
+ "creation": "2026-08-01 19:35:17.081545",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "invoice_file",
+  "document_viewer",
+  "right_column",
+  "status",
+  "extracted_company_name",
+  "party_type",
+  "matched_party",
+  "invoice_number",
+  "date",
+  "total_amount",
+  "section_extracted_items",
+  "extracted_items",
+  "section_logs",
+  "purchase_invoice_ref",
+  "sales_invoice_ref",
+  "extraction_log",
+  "raw_extracted_data",
+  "ocr_geometry_data"
+ ],
+ "fields": [
+  {
+   "fieldname": "invoice_file",
+   "fieldtype": "Attach",
+   "in_list_view": 1,
+   "label": "Invoice File"
+  },
+  {
+   "fieldname": "document_viewer",
+   "fieldtype": "HTML",
+   "label": "Document Viewer"
+  },
+  {
+   "fieldname": "right_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Draft\nPending Review\nProcessing\nProcessed\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extracted_company_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Extracted Company Name"
+  },
+  {
+   "fieldname": "party_type",
+   "fieldtype": "Select",
+   "label": "Party Type",
+   "options": "Supplier\nCustomer"
+  },
+  {
+   "fieldname": "matched_party",
+   "fieldtype": "Dynamic Link",
+   "label": "Matched Party",
+   "options": "party_type"
+  },
+  {
+   "fieldname": "invoice_number",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Invoice Number"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_standard_filter": 1,
+   "label": "Invoice Date"
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Amount"
+  },
+  {
+   "fieldname": "section_extracted_items",
+   "fieldtype": "Section Break",
+   "label": "Extracted Items"
+  },
+  {
+   "fieldname": "extracted_items",
+   "fieldtype": "Table",
+   "options": "Invoice Parse Item"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_logs",
+   "fieldtype": "Section Break",
+   "label": "Logs & References"
+  },
+  {
+   "fieldname": "purchase_invoice_ref",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Purchase Invoice Ref",
+   "options": "Purchase Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sales_invoice_ref",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sales Invoice Ref",
+   "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "extraction_log",
+   "fieldtype": "Small Text",
+   "label": "Extraction Log",
+   "read_only": 1
+  },
+  {
+   "fieldname": "raw_extracted_data",
+   "fieldtype": "Code",
+   "label": "Raw Extracted Data",
+   "options": "JSON",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ocr_geometry_data",
+   "fieldtype": "Code",
+   "hidden": 1,
+   "label": "OCR Geometry Data",
+   "options": "JSON"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-02 17:45:03.273145",
+ "modified_by": "Administrator",
+ "module": "Invoice Parser",
+ "name": "Invoice Parser List",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "invoice_number,purchase_invoice_ref,sales_invoice_ref,status,extracted_company_name,date",
+ "show_title_field_in_link": 1,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "extracted_company_name"
+}
