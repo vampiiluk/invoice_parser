@@ -178,21 +178,18 @@ def process_invoice(docname, force_ai=0):
                         log(f'Could not extract text for template generation: {e}')
                     
                     if text:
-                        from invoice2data.ai.config import AIConfig
-                        from invoice2data.ai.providers.openai_compatible import OpenAICompatibleProvider
-                        from invoice2data.ai.template_generator import generate_template
                         import yaml
+                        import json
+                        from google import genai
+                        from google.genai import types
                         
                         api_key = os.environ.get('INVOICE2DATA_AI_API_KEY')
                         model_name = os.environ.get('INVOICE2DATA_AI_MODEL', 'gemini-3.1-flash-lite')
                         
                         if api_key:
-                            config = AIConfig(provider='gemini', base_url='https://generativelanguage.googleapis.com/v1beta/openai', model=model_name, api_key=api_key)
-                            provider = OpenAICompatibleProvider(config)
+                            client = genai.Client(api_key=api_key)
                             
-                            import invoice2data.ai.template_generator as tg
-                            
-                            original_instructions = (
+                            system_instruction = (
                                 "You write extraction templates for the invoice2data library. Given the text "
                                 "of a sample invoice, return a JSON object with: 'issuer' (the company name), "
                                 "'keywords' (1-3 short strings that uniquely identify this issuer's documents), "
@@ -201,43 +198,27 @@ def process_invoice(docname, force_ai=0):
                                 "Python regular expression with exactly ONE capturing group around the value. "
                                 "Base every regex on the literal text of THIS sample so it matches. Return "
                                 "ONLY the JSON object."
-                            )
-                            
-                            # Cleanly override the global string so it doesn't duplicate on multiple runs
-                            if "lines" not in tg.TEMPLATE_SCHEMA["properties"]:
-                                tg.TEMPLATE_SCHEMA["properties"]["lines"] = {
-                                    "type": "object",
-                                    "properties": {
-                                        "start": {"type": "string"},
-                                        "end": {"type": "string"},
-                                        "line": {"type": "string"},
-                                        "line_separator": {"type": "string"}
-                                    },
-                                    "required": ["start", "end", "line"]
-                                }
-
-                            tg._INSTRUCTIONS = original_instructions + (
                                 " CRITICAL RULES FOR REGEX: "
-                                "1. Make regexes extremely loose and tolerant of newlines by using \s+ instead of exact spaces. "
-                                "2. NEVER hardcode currency symbols like 'Rs', '₨', '$'. Always use \D* or .*? to skip them! "
+                                "1. Make regexes extremely loose and tolerant of newlines by using \\s+ instead of exact spaces. "
+                                "2. NEVER hardcode currency symbols like 'Rs', '₨', '$'. Always use \\D* or .*? to skip them! "
                                 "3. ONLY output the JSON object for the exact invoice provided. DO NOT output a generic 'Vertex42' template unless the invoice is actually from Vertex42! "
                                 "4. IMPORTANT: You MUST also generate a 'lines' object to extract child table line items. The 'lines' object must have: 'start' (a regex matching the table header), 'end' (a regex matching the table end), and 'line' (a regex with named groups like (?P<description>...), (?P<qty>...), (?P<price>...), (?P<amount>...)). CRITICAL: OCR often extracts table columns on separate lines (e.g. ItemName\\nQty\\nPrice). Because invoice2data tests the 'line' regex line-by-line by default, it will FAIL to match. Therefore, you MUST ALWAYS provide a 'line_separator' regex to chunk the text by row start! For example, if rows start with a letter, use '\\n(?=[A-Za-z]+)'. IF ROWS START WITH A NUMBER, DO NOT EVER USE '\\n(?=\\d+)' AS IT WILL ACCIDENTALLY SPLIT ON PRICES TOO! Instead, you MUST analyze the text and use a very specific lookahead, such as '\\n(?=\\d+\\n[A-Za-z])', to guarantee it only splits at the actual start of a row. This forces invoice2data to test your 'line' regex against the whole chunk (where '\\s+' easily matches the newlines between columns). Make your line regex VERY RELAXED (use .*? instead of \\d+ because items often have brackets like [123]!). "
                                 "5. For all numerical amounts (prices, totals, qty), ALWAYS support optional thousands separators by using '[\\d,]+' instead of just '\\d+'. E.g. use '[\\d,]+\\.\\d{2}' to successfully match '1,234.56'."
                             )
                             
-                            # Monkey patch _normalize_template to retain 'lines'
-                            original_normalize = tg._normalize_template
-                            def intercepted_normalize(draft, issuer=None):
-                                template = original_normalize(draft, issuer)
-                                if "lines" in draft:
-                                    template["lines"] = draft["lines"]
-                                return template
-                            tg._normalize_template = intercepted_normalize
-
-                            try:
-                                template_dict = tg.generate_template(text, provider=provider)
-                            finally:
-                                tg._normalize_template = original_normalize
+                            response = client.models.generate_content(
+                                model=model_name,
+                                contents=[text],
+                                config=types.GenerateContentConfig(
+                                    response_mime_type="application/json",
+                                    system_instruction=system_instruction
+                                )
+                            )
+                            
+                            template_dict = json.loads(response.text)
+                            
+                            if "issuer" not in template_dict:
+                                template_dict["issuer"] = "unknown"
                             
                             if template_dict:
                                 templates_dir = settings.templates_directory or "/home/frappe/frappe-bench/sites/erp.sananahmad.dpdns.org/private/files/invoice_templates"
