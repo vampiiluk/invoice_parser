@@ -39,17 +39,18 @@ if not hasattr(InvoiceTemplate, 'original_matches_input'):
 
 
 @frappe.whitelist()
-def enqueue_invoice_processing(docname):
+def enqueue_invoice_processing(docname, force_ai=0):
     # This is called by the client script when a new Invoice Parser List is saved with an attachment.
     frappe.db.set_value("Invoice Parser List", docname, "status", "Processing")
     frappe.enqueue(
         "invoice_parser.utils.invoice_parser.process_invoice",
         queue="long",
         timeout=1500,
-        docname=docname
+        docname=docname,
+        force_ai=int(force_ai)
     )
 
-def process_invoice(docname):
+def process_invoice(docname, force_ai=0):
     doc = frappe.get_doc("Invoice Parser List", docname)
     try:
         extraction_logs = []
@@ -106,64 +107,72 @@ def process_invoice(docname):
                 all_templates += read_templates(templates_dir)
 
         input_module = None
-        for module_name in modules_to_try:
-            try:
-                log(f"Attempting extraction using {module_name}...")
-                input_module = importlib.import_module(f"invoice2data.input.{module_name}")
-                
-                # Intercept text extraction to append it to the UI log and capture OCR geometry
-                original_to_text = getattr(input_module, 'to_text', None)
-                if original_to_text:
-                    def intercepted_to_text(path):
-                        raw_text = ""
-                        if module_name == "doctr":
-                            try:
-                                from invoice2data.input.doctr import _get_model, _render
-                                from doctr.io import DocumentFile
-                                
-                                if path.lower().endswith(".pdf"):
-                                    document = DocumentFile.from_pdf(path)
-                                else:
-                                    document = DocumentFile.from_images(path)
-                                
-                                doctr_res = _get_model()(document)
-                                
-                                # Save the JSON geometry directly to the Doctype
-                                try:
-                                    import json
-                                    doc.ocr_geometry_data = json.dumps(doctr_res.export())
-                                    doc.save(ignore_permissions=True)
-                                except Exception as json_e:
-                                    log(f"Failed to save doctr JSON: {json_e}")
-                                    
-                                raw_text = _render(doctr_res)
-                            except Exception as e:
-                                log(f"Custom doctr extraction failed: {e}")
-                                raw_text = original_to_text(path)
-                        else:
-                            raw_text = original_to_text(path)
-                            
-                        try:
-                            decoded = raw_text.decode('utf-8') if isinstance(raw_text, bytes) else str(raw_text)
-                            log(f"--- RAW TEXT EXTRACTED BY {module_name.upper()} ---\n{decoded}\n-----------------------------------------")
-                        except Exception as decode_e:
-                            log(f"Failed to decode raw text for logging: {decode_e}")
-                        return raw_text
-                    input_module.to_text = intercepted_to_text
-
+        if not force_ai:
+            for module_name in modules_to_try:
                 try:
-                    result = extract_data(file_path, input_module=input_module, templates=all_templates)
-                finally:
+                    log(f"Attempting extraction using {module_name}...")
+                    if module_name in ["pdfium", "doctr"]:
+                        input_module = importlib.import_module(f"invoice_parser.utils.{module_name}")
+                    else:
+                        input_module = importlib.import_module(f"invoice2data.input.{module_name}")
+                    
+                    # Intercept text extraction to append it to the UI log and capture OCR geometry
+                    original_to_text = getattr(input_module, 'to_text', None)
                     if original_to_text:
-                        input_module.to_text = original_to_text
-                        
-                if result:
-                    log(f"Extraction successful using {module_name}!")
-                    extracted_result = result
-                    break
-            except Exception as e:
-                log(f"invoice2data extraction failed with {module_name}: {e}")
-                continue
+                        def intercepted_to_text(path):
+                            raw_text = ""
+                            if module_name == "doctr":
+                                try:
+                                    from invoice_parser.utils.doctr import _get_model, _render
+                                    from doctr.io import DocumentFile
+                                    
+                                    if path.lower().endswith(".pdf"):
+                                        document = DocumentFile.from_pdf(path)
+                                    else:
+                                        document = DocumentFile.from_images(path)
+                                    
+                                    doctr_res = _get_model()(document)
+                                    
+                                    # Save the JSON geometry directly to the Doctype
+                                    try:
+                                        import json
+                                        doc.ocr_geometry_data = json.dumps(doctr_res.export())
+                                        doc.save(ignore_permissions=True)
+                                    except Exception as json_e:
+                                        log(f"Failed to save doctr JSON: {json_e}")
+                                        
+                                    raw_text = _render(doctr_res)
+                                except Exception as e:
+                                    log(f"Custom doctr extraction failed: {e}")
+                                    raw_text = original_to_text(path)
+                            else:
+                                raw_text = original_to_text(path)
+                                
+                            try:
+                                decoded = raw_text.decode('utf-8') if isinstance(raw_text, bytes) else str(raw_text)
+                                log(f"--- RAW TEXT EXTRACTED BY {module_name.upper()} ---\n{decoded}\n-----------------------------------------")
+                            except Exception as decode_e:
+                                log(f"Failed to decode raw text for logging: {decode_e}")
+                            return raw_text
+                        input_module.to_text = intercepted_to_text
+    
+                    try:
+                        result = extract_data(file_path, input_module=input_module, templates=all_templates)
+                    finally:
+                        if original_to_text:
+                            input_module.to_text = original_to_text
+                            
+                    if result:
+                        log(f"Extraction successful using {module_name}!")
+                        extracted_result = result
+                        break
+                except Exception as e:
+                    log(f"invoice2data extraction failed with {module_name}: {e}")
+                    continue
+
+        if extracted_result and not extracted_result.get("lines"):
+            log("Extracted result is missing items/lines. Discarding result to force AI fallback.")
+            extracted_result = None
 
         if not extracted_result and settings.enable_gemini_fallback:
             # Step 1: AI Template Generation

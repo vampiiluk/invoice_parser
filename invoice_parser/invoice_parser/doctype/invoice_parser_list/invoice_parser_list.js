@@ -6,8 +6,12 @@ frappe.ui.form.on("Invoice Parser List", {
         // Add sleek top-bar buttons instead
         if (frm.doc.docstatus === 0 && !frm.is_new()) {
             frm.add_custom_button(__('Process Invoice'), function() {
-                frm.events.process_invoice_action(frm);
+                frm.events.process_invoice_action(frm, 0);
             }).addClass('btn-primary');
+            
+            frm.add_custom_button(__('Process via AI'), function() {
+                frm.events.process_invoice_action(frm, 1);
+            }).addClass('btn-secondary');
             
             if (['Pending Review', 'Completed', 'Review Needed', 'Processed'].includes(frm.doc.status)) {
                 let create_options = [
@@ -159,11 +163,11 @@ frappe.ui.form.on("Invoice Parser List", {
         frm.trigger('refresh');
     },
 
-    process_invoice_action: function(frm) {
+    process_invoice_action: function(frm, force_ai=0) {
         let run_job = () => {
             frappe.call({
                 method: "invoice_parser.utils.invoice_parser.enqueue_invoice_processing",
-                args: { docname: frm.doc.name },
+                args: { docname: frm.doc.name, force_ai: force_ai },
                 callback: function(r) {
                     frappe.show_alert({message: __('Invoice Processing Queued'), indicator:'green'});
                     frm.reload_doc();
