@@ -29,7 +29,6 @@
   },
   {
    "depends_on": "eval:doc.enable_gemini_fallback==1",
-   "description": "Leave blank if you have ChangAI installed; it will be borrowed automatically.",
    "fieldname": "gemini_api_key",
    "fieldtype": "Data",
    "label": "Gemini API Key"
@@ -37,7 +36,7 @@
   {
    "default": "gemini-1.5-flash",
    "depends_on": "eval:doc.enable_gemini_fallback==1",
-   "description": "Specify the model to use (e.g. gemini-1.5-flash, gemini-1.5-pro). Borrowed from ChangAI if empty.",
+   "description": "Specify the model to use (e.g. gemini-1.5-flash, gemini-1.5-pro).",
    "fieldname": "gemini_model",
    "fieldtype": "Data",
    "label": "Gemini Model"

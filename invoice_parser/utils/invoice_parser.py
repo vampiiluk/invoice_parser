@@ -72,20 +72,10 @@ def process_invoice(docname, force_ai=0):
         
         # Enable Gemini if checked in settings
         if settings.enable_gemini_fallback:
-            try:
-                changai_settings = frappe.get_doc("ChangAI Settings")
-                if changai_settings.gemini_api_key:
-                    os.environ["INVOICE2DATA_AI_PROVIDER"] = "gemini"
-                    os.environ["INVOICE2DATA_AI_MODEL"] = changai_settings.gemini_model or "gemini-1.5-flash"
-                    os.environ["INVOICE2DATA_AI_API_KEY"] = changai_settings.get_password("gemini_api_key") if changai_settings.meta.get_field("gemini_api_key").fieldtype == "Password" else changai_settings.gemini_api_key
-            except Exception as e:
-                frappe.logger().info("ChangAI Settings not found, falling back to Invoice Parser Settings")
-                if settings.gemini_api_key:
-                    os.environ["INVOICE2DATA_AI_PROVIDER"] = "gemini"
-                    os.environ["INVOICE2DATA_AI_MODEL"] = settings.gemini_model or "gemini-1.5-flash"
-                    os.environ["INVOICE2DATA_AI_API_KEY"] = settings.get_password("gemini_api_key") if settings.meta.get_field("gemini_api_key").fieldtype == "Password" else settings.gemini_api_key
-
-
+            if settings.gemini_api_key:
+                os.environ["INVOICE2DATA_AI_PROVIDER"] = "gemini"
+                os.environ["INVOICE2DATA_AI_MODEL"] = settings.gemini_model or "gemini-1.5-flash"
+                os.environ["INVOICE2DATA_AI_API_KEY"] = settings.get_password("gemini_api_key") if settings.meta.get_field("gemini_api_key").fieldtype == "Password" else settings.gemini_api_key
         extracted_result = None
         
         # If no cascade is defined, fallback to pdfium -> doctr
@@ -615,3 +605,17 @@ def delete_template_file(doc, method):
     fpath = os.path.join(templates_dir, f"{doc.template_name}.yml")
     if os.path.exists(fpath):
         os.remove(fpath)
+
+@frappe.whitelist()
+def download_doctr_model():
+    frappe.enqueue("invoice_parser.utils.invoice_parser._download_doctr_background", queue="long", timeout=1500)
+    return True
+
+def _download_doctr_background():
+    try:
+        frappe.logger().info("Starting doctr model download...")
+        from invoice_parser.utils.doctr import _get_model
+        _get_model()
+        frappe.logger().info("Successfully downloaded doctr model to cache!")
+    except Exception as e:
+        frappe.logger().error(f"Failed to download doctr model: {e}")
