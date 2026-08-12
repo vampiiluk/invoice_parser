@@ -34,9 +34,9 @@
    "label": "Gemini API Key"
   },
   {
-   "default": "gemini-1.5-flash",
+   "default": "gemini-3.1-flash-lite",
    "depends_on": "eval:doc.enable_gemini_fallback==1",
-   "description": "Specify the model to use (e.g. gemini-1.5-flash, gemini-1.5-pro).",
+   "description": "Specify the model to use (e.g. gemini-3.1-flash-lite, gemini-1.5-pro).",
    "fieldname": "gemini_model",
    "fieldtype": "Data",
    "label": "Gemini Model"

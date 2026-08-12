@@ -74,7 +74,7 @@ def process_invoice(docname, force_ai=0):
         if settings.enable_gemini_fallback:
             if settings.gemini_api_key:
                 os.environ["INVOICE2DATA_AI_PROVIDER"] = "gemini"
-                os.environ["INVOICE2DATA_AI_MODEL"] = settings.gemini_model or "gemini-1.5-flash"
+                os.environ["INVOICE2DATA_AI_MODEL"] = settings.gemini_model or "gemini-3.1-flash-lite"
                 os.environ["INVOICE2DATA_AI_API_KEY"] = settings.get_password("gemini_api_key") if settings.meta.get_field("gemini_api_key").fieldtype == "Password" else settings.gemini_api_key
         extracted_result = None
         
@@ -184,7 +184,7 @@ def process_invoice(docname, force_ai=0):
                         import yaml
                         
                         api_key = os.environ.get('INVOICE2DATA_AI_API_KEY')
-                        model_name = os.environ.get('INVOICE2DATA_AI_MODEL', 'gemini-1.5-flash')
+                        model_name = os.environ.get('INVOICE2DATA_AI_MODEL', 'gemini-3.1-flash-lite')
                         
                         if api_key:
                             config = AIConfig(provider='gemini', base_url='https://generativelanguage.googleapis.com/v1beta/openai', model=model_name, api_key=api_key)
@@ -320,7 +320,7 @@ def process_invoice(docname, force_ai=0):
                     import mimetypes
                     
                     api_key = os.environ.get("INVOICE2DATA_AI_API_KEY")
-                    model_name = os.environ.get("INVOICE2DATA_AI_MODEL", "gemini-1.5-flash")
+                    model_name = os.environ.get("INVOICE2DATA_AI_MODEL", "gemini-3.1-flash-lite")
                     
                     if api_key:
                         client = genai.Client(api_key=api_key)
