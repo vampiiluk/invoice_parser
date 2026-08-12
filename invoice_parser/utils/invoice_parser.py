@@ -65,7 +65,7 @@ def process_invoice(docname, force_ai=0):
 
         # Get file path
         file_doc = frappe.get_doc("File", {"file_url": doc.invoice_file})
-        file_path = file_doc.get_full_path()
+        file_path = frappe.get_site_path(file_doc.file_url.strip('/'))
 
         # Fetch cascade settings
         settings = frappe.get_doc("Invoice Parser Settings")
@@ -233,6 +233,9 @@ def process_invoice(docname, force_ai=0):
                                 # Force case-insensitivity on keywords to combat AI casing mistakes
                                 if 'keywords' in template_dict:
                                     template_dict['keywords'] = [str(k).lower() for k in template_dict['keywords']]
+                                
+                                # Disable strict required fields so partial matches succeed
+                                template_dict['required_fields'] = []
                                 
                                 # Force strict date matching if AI is greedy
                                 if 'date' in template_dict.get('fields', {}):
