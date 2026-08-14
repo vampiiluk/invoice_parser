@@ -6,14 +6,17 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": [
-  "extracted_item_name",
-  "matched_item",
-  "quantity",
-  "rate",
-  "system_rate",
-  "amount"
- ],
+   "field_order": [
+    "extracted_item_name",
+    "matched_item",
+    "matched_item_name",
+    "quantity",
+   "rate",
+   "system_rate",
+   "amount",
+   "uom",
+   "item_group"
+  ],
  "fields": [
   {
    "fieldname": "extracted_item_name",
@@ -21,13 +24,21 @@
    "in_list_view": 1,
    "label": "Extracted Item Name"
   },
-  {
-   "fieldname": "matched_item",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Matched Item",
-   "options": "Item"
-  },
+   {
+    "fieldname": "matched_item",
+    "fieldtype": "Link",
+    "in_list_view": 1,
+    "label": "Matched Item",
+    "options": "Item"
+   },
+   {
+    "fetch_from": "matched_item.item_name",
+    "fieldname": "matched_item_name",
+    "fieldtype": "Data",
+    "in_list_view": 1,
+    "label": "Matched Item Name",
+    "read_only": 1
+   },
   {
    "fieldname": "quantity",
    "fieldtype": "Float",
@@ -51,6 +62,20 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Amount"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "fieldname": "item_group",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Group",
+   "options": "Item Group"
   }
  ],
  "grid_page_length": 50,
@@ -67,5 +92,6 @@
  "rows_threshold_for_grid_search": 20,
  "sort_field": "creation",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "icon": "file-text"
 }

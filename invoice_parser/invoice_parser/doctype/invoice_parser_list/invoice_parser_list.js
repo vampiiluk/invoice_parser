@@ -3,6 +3,8 @@
 
 frappe.ui.form.on("Invoice Parser List", {
     refresh: function(frm) {
+        frm.events.update_total_count(frm);
+        
         // Add sleek top-bar buttons instead
         if (frm.doc.docstatus === 0 && !frm.is_new()) {
             frm.add_custom_button(__('Process Invoice'), function() {
@@ -27,6 +29,23 @@ frappe.ui.form.on("Invoice Parser List", {
                     frm.add_custom_button(__(dt), function() {
                         create_invoice(frm, dt);
                     }, __('Create'));
+                });
+            }
+            
+            if (frm.doc.extracted_items && frm.doc.extracted_items.length) {
+                let has_unmatched = frm.doc.extracted_items.some(r => !r.matched_item);
+                if (has_unmatched) {
+                    frm.add_custom_button(__('Add Unmatched Items to Item Master'), function() {
+                        frm.events.add_items_to_master(frm, {add_all: true});
+                    }).addClass('btn-primary');
+                }
+                frm.add_custom_button(__('Add Selected to Item Master'), function() {
+                    let selected = frm.fields_dict.extracted_items.grid.get_selected_children();
+                    if (!selected.length) {
+                        frappe.msgprint(__('Tick rows in the Extracted Items table first.'));
+                        return;
+                    }
+                    frm.events.add_items_to_master(frm, {row_names: selected.map(r => r.name)});
                 });
             }
         }
@@ -181,6 +200,69 @@ frappe.ui.form.on("Invoice Parser List", {
             run_job();
         }
     },
+
+    update_total_count: function(frm) {
+        let rows = frm.doc.extracted_items || [];
+        let total = 0;
+        rows.forEach(r => {
+            total += parseFloat(r.quantity) || 0;
+        });
+        frm.set_value("total_items", rows.length);
+        frm.set_value("total_item_count", total);
+    },
+
+    add_items_to_master: function(frm, opts) {
+        let d = new frappe.ui.Dialog({
+            title: __('Add Items to Item Master'),
+            fields: [
+                {
+                    fieldname: "update_existing_rates",
+                    fieldtype: "Check",
+                    label: __('Update default purchase rate for already-matched items'),
+                    default: 0
+                }
+            ],
+            primary_action_label: __('Add Items'),
+            primary_action: function() {
+                let args = {
+                    docname: frm.doc.name,
+                    add_all: opts.add_all ? 1 : 0,
+                    update_existing_rates: d.get_value("update_existing_rates") ? 1 : 0
+                };
+                if (opts.row_names) {
+                    args.row_names = opts.row_names;
+                }
+                d.hide();
+                frappe.call({
+                    method: "invoice_parser.utils.invoice_parser.create_item_from_extracted_item",
+                    args: args,
+                    freeze: true,
+                    freeze_message: __('Creating items...'),
+                    callback: function(r) {
+                        if (r.message) {
+                            let m = r.message;
+                            let parts = [];
+                            if (m.created && m.created.length) {
+                                parts.push(__('Created {0} item(s)', [m.created.length]));
+                            }
+                            if (m.updated && m.updated.length) {
+                                parts.push(__('Updated purchase rate for {0} matched item(s)', [m.updated.length]));
+                            }
+                            if (m.skipped && m.skipped.length) {
+                                parts.push(__('Skipped {0} (duplicate or empty)', [m.skipped.length]));
+                            }
+                            if (!parts.length) {
+                                parts.push(m.message || __('Nothing to add.'));
+                            }
+                            frappe.show_alert({message: parts.join('. '), indicator: 'green'});
+                            frm.reload_doc();
+                        }
+                    }
+                });
+            }
+        });
+        d.show();
+    },
     
     on_destroy: function(frm) {
         if (frm._polling) {
@@ -205,6 +287,12 @@ function create_invoice(frm, target_doctype) {
         }
     });
 }
+
+frappe.ui.form.on("Invoice Parse Item", {
+    quantity: function(frm, cdt, cdn) {
+        frm.events.update_total_count(frm);
+    }
+});
 
 frappe.realtime.on('invoice_parsed', function(data) {
     if (cur_frm && cur_frm.doc.name === data.docname) {

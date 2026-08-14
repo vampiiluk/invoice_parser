@@ -6,26 +6,28 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": [
-  "invoice_file",
-  "document_viewer",
-  "right_column",
-  "status",
-  "extracted_company_name",
-  "party_type",
-  "matched_party",
-  "invoice_number",
-  "date",
-  "total_amount",
-  "section_extracted_items",
-  "extracted_items",
-  "section_logs",
-  "purchase_invoice_ref",
-  "sales_invoice_ref",
-  "extraction_log",
-  "raw_extracted_data",
-  "ocr_geometry_data"
- ],
+  "field_order": [
+   "invoice_file",
+   "document_viewer",
+   "right_column",
+   "status",
+   "extracted_company_name",
+   "party_type",
+   "matched_party",
+   "invoice_number",
+   "date",
+    "total_amount",
+    "total_items",
+    "total_item_count",
+   "section_extracted_items",
+   "extracted_items",
+   "section_logs",
+   "purchase_invoice_ref",
+   "sales_invoice_ref",
+   "extraction_log",
+   "raw_extracted_data",
+   "ocr_geometry_data"
+  ],
  "fields": [
   {
    "fieldname": "invoice_file",
@@ -59,12 +61,13 @@
    "in_standard_filter": 1,
    "label": "Extracted Company Name"
   },
-  {
-   "fieldname": "party_type",
-   "fieldtype": "Select",
-   "label": "Party Type",
-   "options": "Supplier\nCustomer"
-  },
+   {
+    "default": "Supplier",
+    "fieldname": "party_type",
+    "fieldtype": "Select",
+    "label": "Party Type",
+    "options": "Supplier\nCustomer"
+   },
   {
    "fieldname": "matched_party",
    "fieldtype": "Dynamic Link",
@@ -83,12 +86,26 @@
    "in_standard_filter": 1,
    "label": "Invoice Date"
   },
-  {
-   "fieldname": "total_amount",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Total Amount"
-  },
+   {
+    "fieldname": "total_amount",
+    "fieldtype": "Currency",
+    "in_list_view": 1,
+    "label": "Total Amount"
+   },
+   {
+    "fieldname": "total_items",
+    "fieldtype": "Int",
+    "in_list_view": 1,
+    "label": "Total Items",
+    "read_only": 1
+   },
+   {
+    "fieldname": "total_item_count",
+    "fieldtype": "Int",
+    "in_list_view": 1,
+    "label": "Total Item Count",
+    "read_only": 1
+   },
   {
    "fieldname": "section_extracted_items",
    "fieldtype": "Section Break",
@@ -173,5 +190,6 @@
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
- "title_field": "extracted_company_name"
+ "title_field": "extracted_company_name",
+ "icon": "list-checks"
 }

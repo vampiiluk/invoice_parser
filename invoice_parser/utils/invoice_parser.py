@@ -38,6 +38,28 @@ if not hasattr(InvoiceTemplate, 'original_matches_input'):
 # =========================================================
 
 
+def get_item_defaults(settings=None):
+    """Return (default_item_group, default_uom, allowed_item_groups) from settings."""
+    settings = settings or frappe.get_single("Invoice Parser Settings")
+    default_group = (getattr(settings, "default_item_group", None) or "Products").strip()
+    default_uom = (getattr(settings, "default_uom", None) or "Nos").strip()
+    allowed_groups = [
+        row.item_group for row in settings.get("allowed_item_groups", []) if row.item_group
+    ]
+    return default_group, default_uom, allowed_groups
+
+
+def resolve_item_group(value, default_group, allowed_groups):
+    """Return value if it is a valid allowed Item Group, else the default."""
+    if value and allowed_groups and value in allowed_groups:
+        return value
+    if value and not allowed_groups and frappe.db.exists("Item Group", value):
+        return value
+    if frappe.db.exists("Item Group", default_group):
+        return default_group
+    return "Products"
+
+
 @frappe.whitelist()
 def enqueue_invoice_processing(docname, force_ai=0):
     # This is called by the client script when a new Invoice Parser List is saved with an attachment.
@@ -206,6 +228,7 @@ def process_invoice(docname, force_ai=0):
                                 "5. For all numerical amounts (prices, totals, qty), ALWAYS support optional thousands separators by using '[\\d,]+' instead of just '\\d+'. E.g. use '[\\d,]+\\.\\d{2}' to successfully match '1,234.56'. "
                                 "6. For the 'date' field, DO NOT use a hyper-specific hardcoded string. Instead use flexible patterns based on the invoice's format: for MM/DD/YYYY use '\\d{2}/\\d{2}/\\d{4}', for YYYY-MM-DD use '\\d{4}-\\d{2}-\\d{2}', and for Month DD, YYYY use '[A-Za-z]+\\s+\\d{1,2},\\s+\\d{4}'. "
                                 "7. For 'invoice_number', capture the pattern rather than the exact ID. Examples: 'INV-\\d+', 'Invoice\\s*#?\\s*[A-Z0-9-]+', '#\\d+'."
+                                "8. The 'line' regex may ALSO include optional named groups (?P<uom>...) for the unit of measure and (?P<item_group>...) for a category when the invoice actually shows those per line (e.g. '10 x 2 KG Rice' has uom 'KG'). Do NOT invent uom/item_group when the invoice text does not show them."
                             )
                             
                             response = client.models.generate_content(
@@ -318,7 +341,19 @@ def process_invoice(docname, force_ai=0):
                         with open(file_path, "rb") as f:
                             file_data = f.read()
                             
-                        prompt = "Extract the following information from the invoice: issuer (company name string), invoice_number (string), date (string), amount (float), lines (list of items with 'description' string, 'qty' float, 'price' float, 'amount' float). Return ONLY a valid JSON object."
+                        default_group, default_uom, allowed_groups = get_item_defaults(settings)
+                        allowed_text = ", ".join(allowed_groups) if allowed_groups else f"{default_group} (or omit)"
+                        prompt = (
+                            "Extract the following information from the invoice: issuer (company name string), "
+                            "invoice_number (string), date (string), amount (float), "
+                            "lines (list of items with 'description' string, 'qty' float, 'price' float, 'amount' float, "
+                            "'uom' string for the unit of measure if shown on the invoice, "
+                            "'item_group' string for the category of each line). "
+                            f"The 'item_group' for each line MUST be one of these categories only: {allowed_text}. "
+                            "If no category clearly applies, omit 'item_group' for that line. "
+                            "Use 'uom' values like 'Nos', 'KG', 'LTR', 'BOX', 'PCS', 'MTR' exactly as shown on the invoice. "
+                            "Return ONLY a valid JSON object."
+                        )
                         
                         response = client.models.generate_content(
                             model=model_name,
@@ -370,19 +405,44 @@ def process_invoice(docname, force_ai=0):
         elif party_match and isinstance(party_match, tuple):
             doc.party_type, doc.matched_party = party_match
 
+        if not doc.party_type:
+            doc.party_type = "Supplier"
+
         matched_lines = extracted_result.get("lines", [])
-        
+
+        default_group, default_uom, allowed_groups = get_item_defaults(settings)
+
+        total_item_count = 0
         doc.set("extracted_items", [])
         for line in matched_lines:
             matched_item_name = match_item(line.get("description") or line.get("name") or line.get("item") or "")
+            matched_item_display = ""
+            if matched_item_name:
+                matched_item_display = frappe.db.get_value("Item", matched_item_name, "item_name") or matched_item_name
+            line_uom = (line.get("uom") or default_uom or "").strip()
+            line_item_group = resolve_item_group(
+                (line.get("item_group") or line.get("category") or "").strip(),
+                default_group, allowed_groups,
+            )
+            try:
+                line_qty = float(str(line.get("qty", 1)).replace(",", "") or 0) if line.get("qty") else 1
+            except Exception:
+                line_qty = 1
+            total_item_count += line_qty
             doc.append("extracted_items", {
                 "extracted_item_name": line.get("description") or line.get("name") or line.get("item") or "",
                 "matched_item": matched_item_name,
-                "quantity": float(str(line.get("qty", 1)).replace(",", "")) if line.get("qty") else 1,
+                "matched_item_name": matched_item_display,
+                "quantity": line_qty,
                 "rate": float(str(line.get("price", 0)).replace(",", "")) if line.get("price") else 0,
                 "system_rate": float(str(line.get("system_rate", 0)).replace(",", "")) if line.get("system_rate") else 0,
-                "amount": float(str(line.get("amount", 0)).replace(",", "")) if line.get("amount") else 0
+                "amount": float(str(line.get("amount", 0)).replace(",", "")) if line.get("amount") else 0,
+                "uom": line_uom if frappe.db.exists("UOM", line_uom) else default_uom,
+                "item_group": line_item_group
             })
+
+        doc.total_items = len(matched_lines)
+        doc.total_item_count = total_item_count
 
         doc.extraction_log = "\n".join(extraction_logs)
         doc.raw_extracted_data = frappe.as_json(extracted_result) if extracted_result else ""
@@ -459,14 +519,14 @@ def create_invoice_from_request(docname, target_doctype):
             item_data = frappe.db.get_value("Item", item.matched_item, ["item_name", "stock_uom"], as_dict=True)
             if item_data:
                 new_item.item_name = item_data.item_name or extracted_name
-                new_item.uom = item_data.stock_uom or "Nos"
+                new_item.uom = item_data.stock_uom or item.uom or "Nos"
             else:
                 new_item.item_name = extracted_name
-                new_item.uom = "Nos"
+                new_item.uom = item.uom or "Nos"
         else:
             new_item.item_name = extracted_name
             new_item.description = extracted_name
-            new_item.uom = "Nos"
+            new_item.uom = item.uom or "Nos"
             
         new_item.qty = item.quantity or 1
         new_item.rate = item.rate or 0
@@ -489,6 +549,146 @@ def create_invoice_from_request(docname, target_doctype):
     doc.db_set("status", "Processed")
         
     return new_doc.name
+
+
+@frappe.whitelist()
+def create_item_from_extracted_item(docname, row_names=None, add_all=0, update_existing_rates=0):
+    """Create Item records in the Item master from extracted invoice lines.
+
+    row_names: child row name(s) of Invoice Parse Item to create items for.
+    add_all:   when truthy, create items for every row that has no matched_item.
+    update_existing_rates: when truthy, also update Item.last_purchase_rate and
+        the "Standard Buying" Item Price for rows that already have a matched_item.
+    Sets matched_item on each processed row so later transactions use the real items.
+    """
+    import json as _json
+
+    update_existing_rates = int(update_existing_rates or 0)
+    add_all = int(add_all or 0)
+
+    def _resolve_uom(row):
+        uom = (row.get("uom") or default_uom or "").strip()
+        if not frappe.db.exists("UOM", uom):
+            uom = default_uom
+        if not frappe.db.exists("UOM", uom):
+            uom = "Nos"
+        return uom
+
+    def _upsert_item_price(item_code, rate, uom=None):
+        if not item_code or not rate:
+            return None
+        if not frappe.db.exists("Price List", "Standard Buying"):
+            return None
+        currency = frappe.db.get_value("Price List", "Standard Buying", "currency")
+        existing = frappe.db.get_value(
+            "Item Price",
+            {"price_list": "Standard Buying", "item_code": item_code},
+            "name",
+        )
+        if existing:
+            ip = frappe.get_doc("Item Price", existing)
+            ip.price_list_rate = rate
+            if uom and ip.uom != uom:
+                ip.uom = uom
+            ip.save(ignore_permissions=True)
+            return ip.name
+        ip = frappe.new_doc("Item Price")
+        ip.price_list = "Standard Buying"
+        ip.item_code = item_code
+        ip.price_list_rate = rate
+        ip.uom = uom or ""
+        if currency:
+            ip.currency = currency
+        ip.insert(ignore_permissions=True)
+        return ip.name
+
+    def _apply_purchase_rate(item_code, rate, uom=None):
+        if not item_code or not rate:
+            return
+        frappe.db.set_value("Item", item_code, "last_purchase_rate", rate)
+        _upsert_item_price(item_code, rate, uom)
+
+    doc = frappe.get_doc("Invoice Parser List", docname)
+    settings = frappe.get_single("Invoice Parser Settings")
+    default_group, default_uom, allowed_groups = get_item_defaults(settings)
+
+    targets = []
+    if add_all:
+        targets = list(doc.extracted_items)
+    elif row_names:
+        if isinstance(row_names, str):
+            try:
+                row_names = _json.loads(row_names)
+            except Exception:
+                row_names = [r.strip() for r in row_names.split(",") if r.strip()]
+        targets = [row for row in doc.extracted_items if row.name in row_names]
+    else:
+        frappe.throw("No item rows specified. Pass row_names or add_all=1.")
+
+    if not update_existing_rates:
+        targets = [row for row in targets if not row.matched_item]
+
+    if not targets:
+        if update_existing_rates:
+            return {"created": [], "updated": [], "skipped": [], "message": "No rows to update."}
+        return {"created": [], "skipped": [], "message": "No unmatched items to add."}
+
+    created = []
+    skipped = []
+    updated = []
+
+    for row in targets:
+        if row.matched_item:
+            if update_existing_rates and row.rate:
+                _apply_purchase_rate(row.matched_item, row.rate, _resolve_uom(row))
+                updated.append({"item_code": row.matched_item, "extracted_item_name": row.extracted_item_name})
+            continue
+
+        item_name = (row.extracted_item_name or "").strip()
+        if not item_name:
+            skipped.append({"extracted_item_name": item_name or "(empty)", "reason": "No extracted item name"})
+            continue
+
+        existing = frappe.db.get_value("Item", {"item_name": item_name}, "name")
+        if existing:
+            row.matched_item = existing
+            row.matched_item_name = frappe.db.get_value("Item", existing, "item_name") or existing
+            reason = f"Item already exists: {existing}"
+            if update_existing_rates and row.rate:
+                _apply_purchase_rate(existing, row.rate, _resolve_uom(row))
+                reason += " (purchase rate updated)"
+            skipped.append({"extracted_item_name": item_name, "reason": reason})
+            continue
+
+        item_group = row.item_group or default_group
+        if not frappe.db.exists("Item Group", item_group):
+            item_group = default_group
+        if not frappe.db.exists("Item Group", item_group):
+            item_group = "Products"
+
+        uom = _resolve_uom(row)
+
+        item = frappe.new_doc("Item")
+        item.item_name = item_name
+        item.item_group = item_group
+        item.stock_uom = uom
+        item.uom = uom
+        item.is_stock_item = 0
+        if row.rate:
+            item.last_purchase_rate = row.rate
+        item.insert(ignore_permissions=True)
+
+        if row.rate:
+            _upsert_item_price(item.name, row.rate, uom)
+
+        row.matched_item = item.name
+        row.matched_item_name = item.item_name
+        created.append({"extracted_item_name": item_name, "item_code": item.name})
+
+    doc.save(ignore_permissions=True)
+    frappe.db.commit()
+
+    return {"created": created, "updated": updated, "skipped": skipped}
 
 
 @frappe.whitelist()

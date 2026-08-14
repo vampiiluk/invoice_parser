@@ -6,14 +6,17 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
- "field_order": [
-  "enable_gemini_fallback",
-  "extraction_cascade",
-  "gemini_api_key",
-  "gemini_model",
-  "generate_template_on_fallback",
-  "templates_directory"
- ],
+  "field_order": [
+   "enable_gemini_fallback",
+   "extraction_cascade",
+   "gemini_api_key",
+   "gemini_model",
+   "generate_template_on_fallback",
+   "templates_directory",
+   "default_item_group",
+   "default_uom",
+   "allowed_item_groups"
+  ],
  "fields": [
   {
    "default": "1",
@@ -56,6 +59,29 @@
    "fieldname": "templates_directory",
    "fieldtype": "Data",
    "label": "Templates Directory"
+  },
+  {
+   "default": "Products",
+   "description": "Default Item Group used when creating items in the Item master from extracted invoice lines.",
+   "fieldname": "default_item_group",
+   "fieldtype": "Link",
+   "label": "Default Item Group",
+   "options": "Item Group"
+  },
+  {
+   "default": "Nos",
+   "description": "Default UOM used when creating items in the Item master from extracted invoice lines.",
+   "fieldname": "default_uom",
+   "fieldtype": "Link",
+   "label": "Default UOM",
+   "options": "UOM"
+  },
+  {
+   "description": "Categories the AI must choose from when assigning an item group to each extracted line. Add the categories you want to allow here.",
+   "fieldname": "allowed_item_groups",
+   "fieldtype": "Table",
+   "label": "Allowed Item Groups (Categories for AI)",
+   "options": "Invoice Parser Allowed Item Group"
   }
  ],
  "grid_page_length": 50,
@@ -83,5 +109,6 @@
  "rows_threshold_for_grid_search": 20,
  "sort_field": "creation",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "icon": "settings"
 }
