@@ -1,7 +1,7 @@
 {
  "app": "invoice_parser",
  "charts": [],
- "content": "[{\"id\": \"ip-hdr\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Invoice Parser</b></span>\", \"col\": 12}}, {\"id\": \"ip-card1\", \"type\": \"card\", \"data\": {\"card_name\": \"Invoice Parser\", \"col\": 4}}, {\"id\": \"ip-card2\", \"type\": \"card\", \"data\": {\"card_name\": \"Configuration\", \"col\": 4}}]",
+ "content": "[{\"id\": \"ip-hdr\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Invoice Parser</b></span>\", \"col\": 12}}, {\"id\": \"ip-sc1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Invoice Parser List\", \"col\": 3}}, {\"id\": \"ip-sc2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Invoice Template\", \"col\": 3}}, {\"id\": \"ip-sc3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Invoice Parser Settings\", \"col\": 3}}, {\"id\": \"ip-card1\", \"type\": \"card\", \"data\": {\"card_name\": \"Invoice Parser\", \"col\": 4}}, {\"id\": \"ip-card2\", \"type\": \"card\", \"data\": {\"card_name\": \"Configuration\", \"col\": 4}}]",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
