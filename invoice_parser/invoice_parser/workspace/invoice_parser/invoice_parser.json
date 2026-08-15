@@ -1,7 +1,7 @@
 {
  "app": "invoice_parser",
  "charts": [],
- "content": "[{\"data\": {\"col\": 12, \"text\": \"<span class=\\\"h4\\\"><b>Your Shortcuts</b></span>\"}, \"id\": \"hdr1\", \"type\": \"header\"}, {\"data\": {\"col\": 4, \"shortcut_name\": \"Invoice Parser List\"}, \"id\": \"ip1\", \"type\": \"shortcut\"}, {\"data\": {\"col\": 4, \"shortcut_name\": \"Invoice Template\"}, \"id\": \"ip2\", \"type\": \"shortcut\"}, {\"data\": {\"col\": 4, \"shortcut_name\": \"Invoice Parser Settings\"}, \"id\": \"ip3\", \"type\": \"shortcut\"}]",
+ "content": "[{\"id\": \"ip-hdr\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>Invoice Parser</b></span>\", \"col\": 12}}, {\"id\": \"ip-card1\", \"type\": \"card\", \"data\": {\"card_name\": \"Invoice Parser\", \"col\": 4}}, {\"id\": \"ip-card2\", \"type\": \"card\", \"data\": {\"card_name\": \"Configuration\", \"col\": 4}}]",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
@@ -12,7 +12,68 @@
  "is_hidden": 0,
  "label": "Invoice Parser",
  "link_type": "DocType",
- "links": [],
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Invoice Parser",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Invoice Parser List",
+   "link_count": 0,
+   "link_to": "Invoice Parser List",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Invoice Template",
+   "link_count": 0,
+   "link_to": "Invoice Template",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Configuration",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Invoice Parser Settings",
+   "link_count": 0,
+   "link_to": "Invoice Parser Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Allowed Item Groups",
+   "link_count": 0,
+   "link_to": "Invoice Parser Allowed Item Group",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
  "module": "Invoice Parser",
  "name": "Invoice Parser",
  "number_cards": [],

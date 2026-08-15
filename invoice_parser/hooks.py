@@ -86,7 +86,8 @@ app_license = "mit"
 # ------------
 
 # before_install = "invoice_parser.install.before_install"
-# after_install = "invoice_parser.install.after_install"
+after_install = "invoice_parser.install.after_install"
+after_migrate = "invoice_parser.install.after_install"
 
 # Uninstallation
 # ------------
